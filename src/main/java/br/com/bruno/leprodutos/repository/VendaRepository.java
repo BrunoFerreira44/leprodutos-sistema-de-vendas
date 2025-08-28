@@ -12,4 +12,6 @@ public interface VendaRepository extends JpaRepository<Venda, Long> {
 //    List<Venda> findByDataVendaAfter(LocalDate inicioDoMesAtual);
 
     List<Venda> findByDataVendaBetween(LocalDate dataInicial, LocalDate dataFinal);
+
+    Venda findTopByOrderByDataVendaAsc();
 }

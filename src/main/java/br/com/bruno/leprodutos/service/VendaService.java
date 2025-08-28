@@ -13,6 +13,7 @@ import java.text.DateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -47,58 +48,46 @@ public class VendaService {
         return new VendaResponseDTO(venda);
     }
 
-//    public StatsDTO getStatsMesAtual() {
-//
-//        LocalDate inicioDoMesAtual = LocalDate.now().withDayOfMonth(1);
-//
-//        List<Venda> vendas = repository.findByDataVendaAfter(inicioDoMesAtual);
-//
-//        String dataFormatada = inicioDoMesAtual.format(DateTimeFormatter.ofPattern("MM/yyyy"));
-//
-//        BigDecimal totalPrecoVendasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO)).map(Venda::getPrecoVenda).reduce(BigDecimal.ZERO, BigDecimal::add);
-//        BigDecimal totalPrecoComprasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO)).map(Venda::getPrecoCompra).reduce(BigDecimal.ZERO, BigDecimal::add);
-//        BigDecimal lucroCatalogo = totalPrecoVendasCatalogo.subtract(totalPrecoComprasCatalogo);
-//
-//        BigDecimal totalPrecoVendasBazar = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR)).map(Venda::getPrecoVenda).reduce(BigDecimal.ZERO, BigDecimal::add);
-//        BigDecimal totalPrecoComprasBazar = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR)).map(Venda::getPrecoCompra).reduce(BigDecimal.ZERO, BigDecimal::add);
-//        BigDecimal lucroBazar = totalPrecoVendasBazar.subtract(totalPrecoComprasBazar);
-//
-//        return new StatsDTO(List.of(
-//                new StatsEspecificoDTO("CATALOGO", dataFormatada, totalPrecoComprasCatalogo, totalPrecoVendasCatalogo, lucroCatalogo),
-//                new StatsEspecificoDTO("BAZAR", dataFormatada, totalPrecoComprasBazar, totalPrecoVendasBazar, lucroBazar)));
-//    }
 
     public StatsDTO getStats(Integer reqMes, Integer reqAno) {
 
-        LocalDate dataInicial = null;
-        LocalDate dataFinal = null;
-        String periodoReferencia = null;
+        periodosDTO periodos = formatPeriodos(reqMes, reqAno);
+        valoresDTO valores = formatValores(periodos);
 
-        if (reqMes == null && reqAno == null) {
-            dataInicial = LocalDate.now().withDayOfMonth(1);
-            dataFinal = LocalDate.now();
-            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("MM/yyyy"));
+        return new StatsDTO(List.of(
+                new StatsEspecificoDTO("CATALOGO", periodos.periodo_referencia(), valores.totalPrecoComprasCatalogo(), valores.totalPrecoVendasCatalogo(), valores.lucroCatalogo()),
+                new StatsEspecificoDTO("BAZAR", periodos.periodo_referencia(), valores.totalPrecoComprasBazar(), valores.totalPrecoVendasBazar(), valores.lucroBazar())
+        ));
+    }
+
+    public StatsDTO getStatsFull() {
+
+        List<StatsEspecificoDTO> lista = new ArrayList<>();
+        Venda vendaMaisAntiga = repository.findTopByOrderByDataVendaAsc();
+
+        LocalDate theData = LocalDate.of(
+                vendaMaisAntiga.getDataVenda().getYear(),
+                vendaMaisAntiga.getDataVenda().getMonth(),
+                1
+        );
+
+        while (theData.isBefore(LocalDate.now())) {
+
+            periodosDTO periodos = formatPeriodos(theData.getMonthValue(), theData.getYear());
+            valoresDTO valores = formatValores(periodos);
+
+            lista.add(new StatsEspecificoDTO("CATALOGO", periodos.periodo_referencia(), valores.totalPrecoComprasCatalogo(), valores.totalPrecoVendasCatalogo(), valores.lucroCatalogo()));
+            lista.add(new StatsEspecificoDTO("BAZAR", periodos.periodo_referencia(), valores.totalPrecoComprasBazar(), valores.totalPrecoVendasBazar(), valores.lucroBazar()));
+
+            theData = theData.plusMonths(1).withDayOfMonth(1);
         }
 
-        else if (reqMes == null) {
-            dataInicial = LocalDate.of(reqAno, 1, 1);
-            dataFinal = dataInicial.plusYears(1);
-            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("yyyy"));
-        }
+        return new StatsDTO(lista);
+    }
 
-        else if (reqAno == null) {
-            dataInicial = LocalDate.of(LocalDate.now().getYear(), reqMes, 1);
-            dataFinal = dataInicial.plusMonths(1);
-            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("MM/yyyy"));
-        }
+    private valoresDTO formatValores(periodosDTO periodos) {
 
-        else if (reqMes != null && reqAno != null) {
-            dataInicial = LocalDate.of(reqAno, reqMes, 1);
-            dataFinal = dataInicial.plusMonths(1);
-            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("MM/yyyy"));
-        }
-
-        List<Venda> vendas = repository.findByDataVendaBetween(dataInicial, dataFinal);
+        List<Venda> vendas = repository.findByDataVendaBetween(periodos.dataInicial(), periodos.dataFinal());
 
         BigDecimal totalPrecoVendasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO)).map(Venda::getPrecoVenda).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalPrecoComprasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO)).map(Venda::getPrecoCompra).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -108,11 +97,42 @@ public class VendaService {
         BigDecimal totalPrecoComprasBazar = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR)).map(Venda::getPrecoCompra).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal lucroBazar = totalPrecoVendasBazar.subtract(totalPrecoComprasBazar);
 
-        return new StatsDTO(List.of(
-                new StatsEspecificoDTO("CATALOGO", periodoReferencia, totalPrecoComprasCatalogo, totalPrecoVendasCatalogo, lucroCatalogo),
-                new StatsEspecificoDTO("BAZAR", periodoReferencia, totalPrecoComprasBazar, totalPrecoVendasBazar, lucroBazar)));
+        return new valoresDTO(totalPrecoVendasCatalogo, totalPrecoComprasCatalogo, lucroCatalogo, totalPrecoVendasBazar, totalPrecoComprasBazar, lucroBazar);
     }
 
+    private periodosDTO formatPeriodos(Integer reqMes, Integer reqAno) {
+
+        LocalDate dataInicial = null;
+        LocalDate dataFinal = null;
+        String periodoReferencia = null;
+
+        if (reqMes == null && reqAno == null) {
+            dataInicial = LocalDate.now().withDayOfMonth(1);
+            dataFinal = LocalDate.now();
+            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("MM/yyyy"));
+            return new periodosDTO(dataInicial, dataFinal, periodoReferencia);
+        }
+
+        if (reqMes == null) {
+            dataInicial = LocalDate.of(reqAno, 1, 1);
+            dataFinal = dataInicial.plusYears(1);
+            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("yyyy"));
+            return new periodosDTO(dataInicial, dataFinal, periodoReferencia);
+        }
+
+        if (reqAno == null) {
+            dataInicial = LocalDate.of(LocalDate.now().getYear(), reqMes, 1);
+            dataFinal = dataInicial.plusMonths(1);
+            periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("MM/yyyy"));
+            return new periodosDTO(dataInicial, dataFinal, periodoReferencia);
+        }
+
+        dataInicial = LocalDate.of(reqAno, reqMes, 1);
+        dataFinal = dataInicial.plusMonths(1);
+        periodoReferencia = dataInicial.format(DateTimeFormatter.ofPattern("MM/yyyy"));
+        return new periodosDTO(dataInicial, dataFinal, periodoReferencia);
+
+    }
 
     private Venda findVendaByIdIfExists(Long id) {
         var venda = repository.findById(id);

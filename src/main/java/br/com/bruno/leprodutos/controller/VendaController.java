@@ -48,13 +48,13 @@ public class VendaController {
         return ResponseEntity.ok(service.updateVenda(dto));
     }
 
-//    @GetMapping("/stats")
-//    public ResponseEntity getStatsMesAtual() {
-//        return ResponseEntity.ok(service.getStatsMesAtual());
-//    }
-
     @GetMapping("/stats")
     public ResponseEntity getStats(@RequestParam(name = "month", required = false) Integer mes, @RequestParam(name = "year", required = false) Integer ano) {
         return ResponseEntity.ok(service.getStats(mes, ano));
+    }
+
+    @GetMapping("/stats/full")
+    public ResponseEntity getStatsFull() {
+        return ResponseEntity.ok(service.getStatsFull());
     }
 }
