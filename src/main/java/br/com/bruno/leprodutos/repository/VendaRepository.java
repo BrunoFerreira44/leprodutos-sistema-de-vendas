@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface VendaRepository extends JpaRepository<Venda, Long> {
 
@@ -13,5 +14,5 @@ public interface VendaRepository extends JpaRepository<Venda, Long> {
 
     List<Venda> findByDataVendaBetween(LocalDate dataInicial, LocalDate dataFinal);
 
-    Venda findTopByOrderByDataVendaAsc();
+    Optional<Venda> findTopByOrderByDataVendaAsc();
 }

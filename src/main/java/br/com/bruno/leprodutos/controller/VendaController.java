@@ -57,4 +57,9 @@ public class VendaController {
     public ResponseEntity getStatsFull() {
         return ResponseEntity.ok(service.getStatsFull());
     }
+
+    @GetMapping("/stats/sum")
+    public ResponseEntity getStatsSum() {
+        return ResponseEntity.ok(service.getStatsSum());
+    }
 }

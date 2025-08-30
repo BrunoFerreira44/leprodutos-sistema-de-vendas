@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -48,7 +49,6 @@ public class VendaService {
         return new VendaResponseDTO(venda);
     }
 
-
     public StatsDTO getStats(Integer reqMes, Integer reqAno) {
 
         periodosDTO periodos = formatPeriodos(reqMes, reqAno);
@@ -63,11 +63,13 @@ public class VendaService {
     public StatsDTO getStatsFull() {
 
         List<StatsEspecificoDTO> lista = new ArrayList<>();
-        Venda vendaMaisAntiga = repository.findTopByOrderByDataVendaAsc();
+        Optional<Venda> vendaMaisAntiga = repository.findTopByOrderByDataVendaAsc();
+
+        if (vendaMaisAntiga.isEmpty()) throw new VendaNaoExistente("Não existe nenhuma venda cadastrada");
 
         LocalDate theData = LocalDate.of(
-                vendaMaisAntiga.getDataVenda().getYear(),
-                vendaMaisAntiga.getDataVenda().getMonth(),
+                vendaMaisAntiga.get().getDataVenda().getYear(),
+                vendaMaisAntiga.get().getDataVenda().getMonth(),
                 1
         );
 
@@ -83,6 +85,25 @@ public class VendaService {
         }
 
         return new StatsDTO(lista);
+    }
+
+    public StatsSumDTO getStatsSum() {
+        List<Venda> vendas = repository.findAll();
+
+        if (vendas.isEmpty()) throw new VendaNaoExistente("Não existe nenhuma venda cadastrada");
+
+        Double somaVendasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda() == TipoDeVenda.CATALOGO).mapToDouble(v -> v.getPrecoVenda().doubleValue()).sum();
+        Double somaComprasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda() == TipoDeVenda.CATALOGO).mapToDouble(v -> v.getPrecoCompra().doubleValue()).sum();
+
+        Double somaVendasBazar = vendas.stream().filter(v -> v.getTipoDeVenda() == TipoDeVenda.BAZAR).mapToDouble(v -> v.getPrecoVenda().doubleValue()).sum();
+        Double somaComprasBazar = vendas.stream().filter(v -> v.getTipoDeVenda() == TipoDeVenda.BAZAR).mapToDouble(v -> v.getPrecoCompra().doubleValue()).sum();
+
+        Double lucroCatalogo = somaVendasCatalogo - somaComprasCatalogo;
+        Double lucroBazar = somaVendasBazar - somaComprasBazar;
+
+        // Atualizado
+
+        return new StatsSumDTO(somaVendasCatalogo, somaComprasCatalogo, lucroCatalogo, somaVendasBazar, somaComprasBazar, lucroBazar);
     }
 
     private valoresDTO formatValores(periodosDTO periodos) {
