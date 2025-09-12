@@ -1,10 +1,15 @@
 package br.com.bruno.leprodutos.controller;
 
+import br.com.bruno.leprodutos.domain.venda.dto.*;
 import br.com.bruno.leprodutos.service.VendaService;
-import br.com.bruno.leprodutos.domain.venda.dto.VendaRequestDTO;
-import br.com.bruno.leprodutos.domain.venda.dto.VendaUpdateDTO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -13,21 +18,23 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RestController
 @RequestMapping("/vendas")
 @RequiredArgsConstructor
+@Tag(name = "Vendas", description = "Gerenciamento de vendas")
 public class VendaController {
 
     private final VendaService service;
 
     @PostMapping
     @Transactional
-    public ResponseEntity postVenda(@RequestBody @Valid VendaRequestDTO req, UriComponentsBuilder uriComponentsBuilder) {
+    @Operation(summary = "Cria uma nova venda", description = "Registra uma nova venda no sistema")
+    public ResponseEntity<VendaResponseDTO> postVenda(@RequestBody @Valid VendaRequestDTO req, UriComponentsBuilder uriComponentsBuilder) {
         var vendaResponseDTO = service.postVenda(req);
         var uri = uriComponentsBuilder.path("/vendas/{id}").buildAndExpand(vendaResponseDTO.id()).toUri();
         return ResponseEntity.created(uri).body(vendaResponseDTO);
     }
 
     @GetMapping
-    public ResponseEntity getAll() {
-        return ResponseEntity.ok(service.getAll());
+    public ResponseEntity getAll(@PageableDefault(sort = {"dataVenda"}, direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(service.getAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -54,12 +61,12 @@ public class VendaController {
     }
 
     @GetMapping("/stats/full")
-    public ResponseEntity getStatsFull() {
+    public ResponseEntity<StatsDTO> getStatsFull() {
         return ResponseEntity.ok(service.getStatsFull());
     }
 
     @GetMapping("/stats/sum")
-    public ResponseEntity getStatsSum() {
+    public ResponseEntity<StatsSumDTO> getStatsSum() {
         return ResponseEntity.ok(service.getStatsSum());
     }
 }

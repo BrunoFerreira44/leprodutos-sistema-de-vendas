@@ -3,16 +3,16 @@ package br.com.bruno.leprodutos.service;
 import br.com.bruno.leprodutos.domain.venda.TipoDeVenda;
 import br.com.bruno.leprodutos.domain.venda.Venda;
 import br.com.bruno.leprodutos.domain.venda.dto.*;
-import br.com.bruno.leprodutos.infrastructure.VendaNaoExistente;
+import br.com.bruno.leprodutos.infrastructure.exception.VendaNaoExistente;
 import br.com.bruno.leprodutos.repository.VendaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.text.DateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,8 +29,8 @@ public class VendaService {
         return new VendaResponseDTO(venda);
     }
 
-    public List<Venda> getAll() {
-        return repository.findAll();
+    public Page<Venda> getAll(Pageable pageable) {
+        return repository.findAll(pageable);
     }
 
     public VendaResponseDTO getById(Long id) {
@@ -110,12 +110,29 @@ public class VendaService {
 
         List<Venda> vendas = repository.findByDataVendaBetween(periodos.dataInicial(), periodos.dataFinal());
 
-        BigDecimal totalPrecoVendasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO)).map(Venda::getPrecoVenda).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalPrecoComprasCatalogo = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO)).map(Venda::getPrecoCompra).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalPrecoVendasCatalogo = vendas.stream()
+                .filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO))
+                .map(Venda::getPrecoVenda)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalPrecoComprasCatalogo = vendas.stream()
+                .filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.CATALOGO))
+                .map(Venda::getPrecoCompra)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal lucroCatalogo = totalPrecoVendasCatalogo.subtract(totalPrecoComprasCatalogo);
 
-        BigDecimal totalPrecoVendasBazar = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR)).map(Venda::getPrecoVenda).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalPrecoComprasBazar = vendas.stream().filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR)).map(Venda::getPrecoCompra).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalPrecoVendasBazar = vendas.stream()
+                .filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR))
+                .map(Venda::getPrecoVenda)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalPrecoComprasBazar = vendas.stream()
+                .filter(v -> v.getTipoDeVenda().equals(TipoDeVenda.BAZAR))
+                .map(Venda::getPrecoCompra)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal lucroBazar = totalPrecoVendasBazar.subtract(totalPrecoComprasBazar);
 
         return new valoresDTO(totalPrecoVendasCatalogo, totalPrecoComprasCatalogo, lucroCatalogo, totalPrecoVendasBazar, totalPrecoComprasBazar, lucroBazar);

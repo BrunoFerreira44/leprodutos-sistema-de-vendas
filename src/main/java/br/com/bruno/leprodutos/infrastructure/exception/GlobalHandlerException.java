@@ -1,4 +1,4 @@
-package br.com.bruno.leprodutos.infrastructure;
+package br.com.bruno.leprodutos.infrastructure.exception;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
